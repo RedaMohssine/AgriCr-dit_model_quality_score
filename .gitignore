@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Virtual environment (not needed — Render installs from requirements.txt)
+venv/
+
+# Generated data outputs (created at runtime by the pipeline)
+data/farm_profiles/*.csv
+data/farm_profiles/*.json
+data/farm_profiles/*.png
+data/farm_images/
+
+# OS
+.DS_Store
+Thumbs.db
