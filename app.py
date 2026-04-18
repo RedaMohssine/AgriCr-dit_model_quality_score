@@ -4,6 +4,7 @@ POST /assess  →  receives farmer location JSON, returns quality score report
 """
 
 import os, json, tempfile
+import urllib.request
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -194,6 +195,20 @@ def compute_score(df):
     return round(quality, 1), {k: round(v, 1) for k, v in sub.items()}
 
 
+def reverse_geocode(lat, lon):
+    try:
+        url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json"
+        req = urllib.request.Request(url, headers={"User-Agent": "CIH-FarmCredit/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+        addr = data.get("address", {})
+        city    = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("county", "")
+        country = addr.get("country", "")
+        return f"{city}, {country}".strip(", ")
+    except Exception:
+        return f"{lat}, {lon}"
+
+
 def build_report(lat, lon, df, quality_score, sub_scores):
     r0, r1 = df.iloc[0], df.iloc[-1]
     ndvi_slope  = float(np.polyfit(np.arange(len(df)), df["NDVI"].values, 1)[0])
@@ -202,8 +217,9 @@ def build_report(lat, lon, df, quality_score, sub_scores):
     stress_list = [f"{int(r['year'])}-{int(r['month']):02d}" for _, r in df[stress_mask].iterrows()]
     dry         = df[df["rainfall"] < 10]
 
+    region = reverse_geocode(lat, lon)
     return {
-        "farm": {"lat": lat, "lon": lon},
+        "farm": {"lat": lat, "lon": lon, "region": region},
         "assessment_date": str(date.today()),
         "data_window": {
             "from":   f"{int(r0['year'])}-{int(r0['month']):02d}",
