@@ -156,7 +156,7 @@ BOUNDS = {
     "productivity": (29.01, 54.53),
     "consistency":  (0.269, 0.028),
     "trend":        (0.85,  1.15),
-    "vegetation":   (0.18,  0.66),
+    "vegetation":   (0.10,  0.50),
     "resilience":   (28.5,  50.4),
 }
 WEIGHTS = {
