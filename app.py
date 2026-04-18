@@ -24,14 +24,19 @@ FEAT_COLS  = joblib.load(os.path.join(BASE_DIR, "saved_model", "feature_cols_v2.
 
 
 # ── GEE authentication ─────────────────────────────────────────────────────────
+# Lazy init: called on first /assess request, not at startup.
 # On Render: set env vars GEE_SERVICE_ACCOUNT and GEE_PRIVATE_KEY
 # Locally:   uses your cached OAuth token (~/.config/earthengine/credentials)
-def init_gee():
-    sa    = os.environ.get("GEE_SERVICE_ACCOUNT")
-    key   = os.environ.get("GEE_PRIVATE_KEY")
-    proj  = os.environ.get("GEE_PROJECT", "")
+_gee_initialized = False
+
+def ensure_gee():
+    global _gee_initialized
+    if _gee_initialized:
+        return
+    sa   = os.environ.get("GEE_SERVICE_ACCOUNT")
+    key  = os.environ.get("GEE_PRIVATE_KEY")
+    proj = os.environ.get("GEE_PROJECT", "")
     if sa and key:
-        # Write key to temp file (Render stores it as env var string)
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write(key)
             key_path = f.name
@@ -39,8 +44,7 @@ def init_gee():
         ee.Initialize(credentials, project=proj)
     else:
         ee.Initialize(project=proj or None)
-
-init_gee()
+    _gee_initialized = True
 
 
 # ── FastAPI app ────────────────────────────────────────────────────────────────
@@ -254,6 +258,7 @@ def assess(payload: FarmerMessage):
         raise HTTPException(status_code=422, detail="Coordinates out of range")
 
     try:
+        ensure_gee()
         raw_df  = fetch_profile(lat, lon)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"GEE fetch failed: {str(e)}")
