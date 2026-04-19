@@ -28,7 +28,7 @@ Farmer sends GPS location via WhatsApp
    n8n sends results back to farmer via WhatsApp
    Database updated with full assessment
         ↓
-   CIH bank officer reviews score on the dashboard + stage for credit decision
+   CIH bank officer reviews score on the dashboard + stage for service decision
 ```
 
 ---
