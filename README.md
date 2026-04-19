@@ -120,8 +120,7 @@ The entire end-to-end pipeline runs inside an **n8n** automation workflow — no
 
 ### Full workflow overview
 
-![n8n workflow overview](<img width="1600" height="694" alt="n8n_overview" src="https://github.com/user-attachments/assets/fff23b42-81ba-4266-8382-65f341decd88" />
-)
+![n8n workflow overview](https://github.com/user-attachments/assets/fff23b42-81ba-4266-8382-65f341decd88)
 
 ### Step-by-step breakdown
 
@@ -135,8 +134,7 @@ The entire end-to-end pipeline runs inside an **n8n** automation workflow — no
 - **true** (text/non-location) → Sends an acknowledgment WhatsApp reply immediately.
 - **false** (location message) → Continues to the assessment pipeline.
 
-![n8n workflow start](<img width="1526" height="952" alt="WhatsApp Image 2026-04-19 at 10 34 19" src="https://github.com/user-attachments/assets/ad5c6298-a873-4c3e-9066-27ceb196f994" />
-)
+![n8n workflow start](https://github.com/user-attachments/assets/ad5c6298-a873-4c3e-9066-27ceb196f994)
 
 #### Step 4 — Extract coordinates (Code in JavaScript1)
 Validates and formats the latitude/longitude from the WhatsApp location payload.
@@ -166,8 +164,8 @@ Claude Haiku reads the satellite report and returns:
 - **Update a row1** — saves the complete assessment (score + stage + paragraph) to the database for the dashboard.
 - **Send WhatsApp** — delivers the results back to the farmer's phone number.
 
-![n8n workflow end](<img width="1600" height="1026" alt="WhatsApp Image 2026-04-19 at 10 35 34" src="https://github.com/user-attachments/assets/0084a059-ad5d-4f95-bbc4-e804a16f64c4" />
-)
+![n8n workflow end](https://github.com/user-attachments/assets/0084a059-ad5d-4f95-bbc4-e804a16f64c4)
+
 ---
 
 ## Deployment
