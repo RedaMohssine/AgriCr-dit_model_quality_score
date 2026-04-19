@@ -1,8 +1,8 @@
-# AgriCrédit — Farm Credit Assessment via Satellite
+# AgriCrédit: Farm Credit Assessment via Satellite
 
-> CIH Bank Hackathon 2026 — Automated rural credit scoring from GPS coordinates using satellite imagery and machine learning.
+> CIH Bank Hackathon 2026: Automated rural credit scoring from GPS coordinates using satellite imagery and machine learning.
 
-A rural Moroccan farmer sends their GPS location via **WhatsApp**. Within minutes, CIH bank officers receive a structured **credit quality score (0–100)** on an interactive dashboard — no site visit, no paperwork.
+A rural Moroccan farmer sends their GPS location via **WhatsApp**. Within minutes, CIH bank officers receive a structured **credit quality score (0–100)** on an interactive dashboard: no site visit, no paperwork.
 
 ---
 
@@ -42,7 +42,7 @@ The quality score aggregates **24 months of satellite and climate data** into a 
 | Productivity | 30% | Average and peak yield potential |
 | Consistency | 25% | Income stability (low variance = reliable repayment) |
 | Trend | 20% | Year-over-year improvement |
-| Vegetation Health | 15% | NDVI greenness — calibrated to Moroccan semi-arid conditions |
+| Vegetation Health | 15% | NDVI greenness: calibrated to Moroccan semi-arid conditions |
 | Drought Resilience | 10% | Yield floor during heat/dry stress periods |
 
 ### Example JSON response
@@ -103,12 +103,12 @@ All data fetched via **Google Earth Engine** for the farm location (500 m radius
 
 ## ML Model
 
-**XGBoost Regressor** trained on the [Kaggle Crop Yield Prediction dataset](https://www.kaggle.com/datasets/atharvasoundankar/smart-farming-sensor-data-for-yield-prediction) — 1,621 observations across 90 fields.
+**XGBoost Regressor** trained on the [Kaggle Crop Yield Prediction dataset](https://www.kaggle.com/datasets/atharvasoundankar/smart-farming-sensor-data-for-yield-prediction): 1,621 observations across 90 fields.
 
 - 14 engineered features (spectral indices + climate + seasonal encoding)
 - Field-level train/test split (no data leakage)
 - GroupKFold cross-validation
-- **Test MAE: 1.169 t/ha — Test R²: 0.901**
+- **Test MAE: 1.169 t/ha: Test R²: 0.901**
 
 > Yield predictions are model-relative (used as a comparative signal between months/farms), not absolute Moroccan benchmarks.
 
@@ -116,7 +116,7 @@ All data fetched via **Google Earth Engine** for the farm location (500 m radius
 
 ## n8n Workflow
 
-The entire end-to-end pipeline runs inside an **n8n** automation workflow — no manual steps. **Both models are called in sequence** for every location message received.
+The entire end-to-end pipeline runs inside an **n8n** automation workflow: no manual steps. **Both models are called in sequence** for every location message received.
 
 ### Full workflow overview
 
@@ -124,45 +124,45 @@ The entire end-to-end pipeline runs inside an **n8n** automation workflow — no
 
 ### Step-by-step breakdown
 
-#### Step 1 — Receive WhatsApp message
+#### Step 1: Receive WhatsApp message
 **Webhook (POST)** receives the incoming message from the WhatsApp integration.
 
-#### Step 2 — Parse message
+#### Step 2: Parse message
 **Code in JavaScript** extracts the message fields: phone number, message type, and coordinates.
 
-#### Step 3 — Route by message type (If)
+#### Step 3: Route by message type (If)
 - **true** (text/non-location) → Sends an acknowledgment WhatsApp reply immediately.
 - **false** (location message) → Continues to the assessment pipeline.
 
 ![n8n workflow start](https://github.com/user-attachments/assets/ad5c6298-a873-4c3e-9066-27ceb196f994)
 
-#### Step 4 — Extract coordinates (Code in JavaScript1)
+#### Step 4: Extract coordinates (Code in JavaScript1)
 Validates and formats the latitude/longitude from the WhatsApp location payload.
 
-#### Step 5 — Check if assessment should run (If1)
+#### Step 5: Check if assessment should run (If1)
 - **true** → Calls Model 1.
-- **false** → Routes to database handling (If2 — create or update farmer record).
+- **false** → Routes to database handling (If2: create or update farmer record).
 
-#### Step 6 — Call Model 1: AgriCredit Scoring (HTTP Request)
+#### Step 6: Call Model 1: AgriCredit Scoring (HTTP Request)
 `POST https://agricredit-model-quality-score.onrender.com/assess`
 
 Sends the coordinates. This triggers the full 24-month satellite fetch from Google Earth Engine, XGBoost yield inference, and 5-dimension quality scoring. Returns the full JSON report.
 
-- **Update a row** — logs the raw request to the database in parallel.
+- **Update a row**: logs the raw request to the database in parallel.
 
-#### Step 7 — Call Model 2: Farm Stage Classifier (HTTP Request1)
+#### Step 7: Call Model 2: Farm Stage Classifier (HTTP Request1)
 **Code in JavaScript2** passes the full JSON report from Model 1 directly into:
 
 `POST https://cih-hackathon-model2-1.onrender.com/classify`
 
 Claude Haiku reads the satellite report and returns:
-- `stage` — current farm stage in French (e.g. *croissance végétative*)
-- `confidence` — haute / moyenne / faible
-- `paragraph` — analytical paragraph for the CIH credit team
+- `stage`: current farm stage in French (e.g. *croissance végétative*)
+- `confidence`: haute / moyenne / faible
+- `paragraph`: analytical paragraph for the CIH credit team
 
-#### Step 8 — Save & deliver
-- **Update a row1** — saves the complete assessment (score + stage + paragraph) to the database for the dashboard.
-- **Send WhatsApp** — delivers the results back to the farmer's phone number.
+#### Step 8: Save & deliver
+- **Update a row1**: saves the complete assessment (score + stage + paragraph) to the database for the dashboard.
+- **Send WhatsApp**: delivers the results back to the farmer's phone number.
 
 ![n8n workflow end](https://github.com/user-attachments/assets/0084a059-ad5d-4f95-bbc4-e804a16f64c4)
 
@@ -196,13 +196,13 @@ curl -X POST "https://agricredit-model-quality-score.onrender.com/assess" \
 
 ## References
 
-- Rouse et al. (1974) — NDVI
-- Gitelson et al. (1996) — GNDVI
-- Gao (1996) — NDWI
-- Huete (1988) — SAVI
-- Funk et al. (2015) — CHIRPS precipitation
-- Wan (2014) — MODIS LST
-- Reichle et al. (2019) — NASA SMAP soil moisture
-- Allen et al. (1998) — FAO Irrigation & Drainage Paper No. 56 (heat stress threshold)
-- FAO (2012) — Composite indicator methodology
-- Myneni et al. (1995) — Active vegetation NDVI threshold
+- Rouse et al. (1974): NDVI
+- Gitelson et al. (1996): GNDVI
+- Gao (1996): NDWI
+- Huete (1988): SAVI
+- Funk et al. (2015): CHIRPS precipitation
+- Wan (2014): MODIS LST
+- Reichle et al. (2019): NASA SMAP soil moisture
+- Allen et al. (1998): FAO Irrigation & Drainage Paper No. 56 (heat stress threshold)
+- FAO (2012): Composite indicator methodology
+- Myneni et al. (1995): Active vegetation NDVI threshold
