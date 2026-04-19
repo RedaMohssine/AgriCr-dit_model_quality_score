@@ -96,7 +96,7 @@ All data fetched via **Google Earth Engine** for the farm location (500 m radius
 
 ## ML Model
 
-**XGBoost Regressor** trained on the [Kaggle Crop Yield Prediction dataset](https://www.kaggle.com/) — 1,621 observations across 90 fields.
+**XGBoost Regressor** trained on the [Kaggle Crop Yield Prediction dataset](https://www.kaggle.com/datasets/atharvasoundankar/smart-farming-sensor-data-for-yield-prediction) — 1,621 observations across 90 fields.
 
 - 14 engineered features (spectral indices + climate + seasonal encoding)
 - Field-level train/test split (no data leakage)
@@ -107,36 +107,68 @@ All data fetched via **Google Earth Engine** for the farm location (500 m radius
 
 ---
 
-## n8n Workflow Integration
+## n8n Workflow
 
-The API is called from an **n8n** automation workflow. The workflow:
+The entire end-to-end pipeline runs inside an **n8n** automation workflow — no manual steps.
 
-1. Receives the WhatsApp message containing the farmer's GPS location
-2. Sends a `GET /` health check to wake the Render instance if inactive
-3. Sends `POST /assess` with the coordinates and farmer phone number
-4. Parses the JSON response and forwards the score to the bank officer
+### Full workflow overview
 
-### n8n HTTP Request node configuration
+![n8n workflow overview](screenshots/n8n_overview.png)
 
-**Wake-up call (GET):**
-- Method: `GET`
-- URL: `https://agricredit-model-quality-score.onrender.com/`
+### Step-by-step breakdown
 
-**Assessment call (POST):**
-- Method: `POST`
-- URL: `https://agricredit-model-quality-score.onrender.com/assess`
-- Body (JSON):
-```json
-{
-  "latitude": "{{ $json.latitude }}",
-  "longitude": "{{ $json.longitude }}",
-  "farmerPhone": "{{ $json.farmerPhone }}",
-  "messageType": "location",
-  "shouldProcess": true
-}
+#### Step 1 — Receive WhatsApp message
+**Webhook (POST)** receives the incoming message from the WhatsApp integration. Every message sent to the farmer's dedicated number triggers this webhook.
+
+#### Step 2 — Parse message
+**Code in JavaScript** extracts the message fields: phone number, message type, coordinates (if present), and any text content.
+
+#### Step 3 — Route by message type (If)
+Checks whether the message contains a GPS location or is just a text message.
+- **true** (text/non-location) → Sends an acknowledgment WhatsApp message back to the farmer immediately.
+- **false** (location message) → Continues to the assessment pipeline.
+
+![n8n workflow start](screenshots/n8n_start.png)
+
+#### Step 4 — Extract coordinates (Code in JavaScript1)
+Formats and validates the latitude/longitude extracted from the WhatsApp location payload.
+
+#### Step 5 — Check if assessment should run (If1)
+Determines whether this location qualifies for a full satellite assessment.
+- **true** → Calls the AgriCredit API.
+- **false** → Routes to database handling (If2).
+
+#### Step 6 — Call AgriCredit API (HTTP Request)
+`POST https://agricredit-model-quality-score.onrender.com/assess`
+
+Sends the farmer's coordinates to the Render-hosted API. This triggers the full 24-month satellite data fetch, XGBoost inference, and quality scoring pipeline.
+
+#### Step 7 — Format & deliver results
+- **Code in JavaScript2** — formats the JSON score response into a readable WhatsApp message.
+- **HTTP Request1** — posts the formatted result to a secondary CIH backend endpoint for logging.
+- **Update a row1** — saves the assessment result to the database.
+- **Send WhatsApp** — delivers the credit quality score back to the farmer's phone.
+
+#### Step 8 — Database routing (If2)
+For messages that don't trigger a new assessment:
+- **true** (farmer record exists) → **Update a row2** → Send WhatsApp confirmation.
+- **false** (new farmer) → **Create a row** → Send WhatsApp welcome message.
+
+![n8n workflow end](screenshots/n8n_end.png)
+
+### HTTP Request node configuration
+
 ```
-
-> Add your n8n workflow screenshots in a `screenshots/` folder and reference them here.
+Method : POST
+URL    : https://agricredit-model-quality-score.onrender.com/assess
+Body   : {
+           "latitude":      "{{ $json.latitude }}",
+           "longitude":     "{{ $json.longitude }}",
+           "farmerPhone":   "{{ $json.farmerPhone }}",
+           "messageType":   "location",
+           "shouldProcess": true
+         }
+```
 
 ---
 
