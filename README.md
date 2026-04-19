@@ -9,19 +9,26 @@ A rural Moroccan farmer sends their GPS location via **WhatsApp**. Within minute
 ## How it works
 
 ```
-Farmer sends WhatsApp location
+Farmer sends GPS location via WhatsApp
         ↓
-   n8n workflow captures coordinates
+   n8n workflow receives it via Webhook
         ↓
-   POST /assess → Render API
+   ── MODEL 1 (this repo) ──────────────────────────────
+   POST /assess
+   Google Earth Engine → 24 months satellite data
+   XGBoost → monthly yield curve
+   5-dimension quality score (0–100)
+   JSON report produced
         ↓
-   Google Earth Engine fetches 24 months of satellite data
+   ── MODEL 2 (Farm Stage Classifier) ──────────────────
+   POST /classify
+   Claude Haiku reads the JSON report
+   Returns: farm stage + confidence + analytical paragraph
         ↓
-   XGBoost model predicts monthly yield for each snapshot
+   n8n sends results back to farmer via WhatsApp
+   Database updated with full assessment
         ↓
-   5-dimension quality score computed
-        ↓
-   JSON report returned to n8n → forwarded to bank officer
+   CIH bank officer reviews score + stage for credit decision
 ```
 
 ---
@@ -109,7 +116,7 @@ All data fetched via **Google Earth Engine** for the farm location (500 m radius
 
 ## n8n Workflow
 
-The entire end-to-end pipeline runs inside an **n8n** automation workflow — no manual steps.
+The entire end-to-end pipeline runs inside an **n8n** automation workflow — no manual steps. **Both models are called in sequence** for every location message received.
 
 ### Full workflow overview
 
@@ -118,45 +125,48 @@ The entire end-to-end pipeline runs inside an **n8n** automation workflow — no
 ### Step-by-step breakdown
 
 #### Step 1 — Receive WhatsApp message
-**Webhook (POST)** receives the incoming message from the WhatsApp integration. Every message sent to the farmer's dedicated number triggers this webhook.
+**Webhook (POST)** receives the incoming message from the WhatsApp integration.
 
 #### Step 2 — Parse message
-**Code in JavaScript** extracts the message fields: phone number, message type, coordinates (if present), and any text content.
+**Code in JavaScript** extracts the message fields: phone number, message type, and coordinates.
 
 #### Step 3 — Route by message type (If)
-Checks whether the message contains a GPS location or is just a text message.
-- **true** (text/non-location) → Sends an acknowledgment WhatsApp message back to the farmer immediately.
+- **true** (text/non-location) → Sends an acknowledgment WhatsApp reply immediately.
 - **false** (location message) → Continues to the assessment pipeline.
 
 ![n8n workflow start](screenshots/n8n_start.png)
 
 #### Step 4 — Extract coordinates (Code in JavaScript1)
-Formats and validates the latitude/longitude extracted from the WhatsApp location payload.
+Validates and formats the latitude/longitude from the WhatsApp location payload.
 
 #### Step 5 — Check if assessment should run (If1)
-Determines whether this location qualifies for a full satellite assessment.
-- **true** → Calls the AgriCredit API.
-- **false** → Routes to database handling (If2).
+- **true** → Calls Model 1.
+- **false** → Routes to database handling (If2 — create or update farmer record).
 
-#### Step 6 — Call AgriCredit API (HTTP Request)
+#### Step 6 — Call Model 1: AgriCredit Scoring (HTTP Request)
 `POST https://agricredit-model-quality-score.onrender.com/assess`
 
-Sends the farmer's coordinates to the Render-hosted API. This triggers the full 24-month satellite data fetch, XGBoost inference, and quality scoring pipeline.
+Sends the coordinates. This triggers the full 24-month satellite fetch from Google Earth Engine, XGBoost yield inference, and 5-dimension quality scoring. Returns the full JSON report.
 
-#### Step 7 — Format & deliver results
-- **Code in JavaScript2** — formats the JSON score response into a readable WhatsApp message.
-- **HTTP Request1** — posts the formatted result to a secondary CIH backend endpoint for logging.
-- **Update a row1** — saves the assessment result to the database.
-- **Send WhatsApp** — delivers the credit quality score back to the farmer's phone.
+- **Update a row** — logs the raw request to the database in parallel.
 
-#### Step 8 — Database routing (If2)
-For messages that don't trigger a new assessment:
-- **true** (farmer record exists) → **Update a row2** → Send WhatsApp confirmation.
-- **false** (new farmer) → **Create a row** → Send WhatsApp welcome message.
+#### Step 7 — Call Model 2: Farm Stage Classifier (HTTP Request1)
+**Code in JavaScript2** passes the full JSON report from Model 1 directly into:
+
+`POST https://cih-hackathon-model2-1.onrender.com/classify`
+
+Claude Haiku reads the satellite report and returns:
+- `stage` — current farm stage in French (e.g. *croissance végétative*)
+- `confidence` — haute / moyenne / faible
+- `paragraph` — analytical paragraph for the CIH credit team
+
+#### Step 8 — Save & deliver
+- **Update a row1** — saves the complete assessment (score + stage + paragraph) to the database.
+- **Send WhatsApp** — delivers the results back to the farmer's phone number.
 
 ![n8n workflow end](screenshots/n8n_end.png)
 
-### HTTP Request node configuration
+### Node configuration — Model 1
 
 ```
 Method : POST
@@ -168,6 +178,14 @@ Body   : {
            "messageType":   "location",
            "shouldProcess": true
          }
+```
+
+### Node configuration — Model 2
+
+```
+Method : POST
+URL    : https://cih-hackathon-model2-1.onrender.com/classify
+Body   : {{ JSON.stringify($json) }}   ← full Model 1 JSON report passed directly
 ```
 
 ---
