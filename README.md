@@ -2,7 +2,7 @@
 
 > CIH Bank Hackathon 2026 — Automated rural credit scoring from GPS coordinates using satellite imagery and machine learning.
 
-A rural Moroccan farmer sends their GPS location via **WhatsApp**. Within minutes, CIH bank officers receive a structured **credit quality score (0–100)** — no site visit, no paperwork.
+A rural Moroccan farmer sends their GPS location via **WhatsApp**. Within minutes, CIH bank officers receive a structured **credit quality score (0–100)** on an interactive dashboard — no site visit, no paperwork.
 
 ---
 
@@ -28,7 +28,7 @@ Farmer sends GPS location via WhatsApp
    n8n sends results back to farmer via WhatsApp
    Database updated with full assessment
         ↓
-   CIH bank officer reviews score + stage for credit decision
+   CIH bank officer reviews score on the dashboard + stage for credit decision
 ```
 
 ---
@@ -120,7 +120,8 @@ The entire end-to-end pipeline runs inside an **n8n** automation workflow — no
 
 ### Full workflow overview
 
-![n8n workflow overview](screenshots/n8n_overview.png)
+![n8n workflow overview](<img width="1600" height="694" alt="n8n_overview" src="https://github.com/user-attachments/assets/fff23b42-81ba-4266-8382-65f341decd88" />
+)
 
 ### Step-by-step breakdown
 
@@ -134,7 +135,8 @@ The entire end-to-end pipeline runs inside an **n8n** automation workflow — no
 - **true** (text/non-location) → Sends an acknowledgment WhatsApp reply immediately.
 - **false** (location message) → Continues to the assessment pipeline.
 
-![n8n workflow start](screenshots/n8n_start.png)
+![n8n workflow start](<img width="1526" height="952" alt="WhatsApp Image 2026-04-19 at 10 34 19" src="https://github.com/user-attachments/assets/ad5c6298-a873-4c3e-9066-27ceb196f994" />
+)
 
 #### Step 4 — Extract coordinates (Code in JavaScript1)
 Validates and formats the latitude/longitude from the WhatsApp location payload.
@@ -161,55 +163,11 @@ Claude Haiku reads the satellite report and returns:
 - `paragraph` — analytical paragraph for the CIH credit team
 
 #### Step 8 — Save & deliver
-- **Update a row1** — saves the complete assessment (score + stage + paragraph) to the database.
+- **Update a row1** — saves the complete assessment (score + stage + paragraph) to the database for the dashboard.
 - **Send WhatsApp** — delivers the results back to the farmer's phone number.
 
-![n8n workflow end](screenshots/n8n_end.png)
-
-### Node configuration — Model 1
-
-```
-Method : POST
-URL    : https://agricredit-model-quality-score.onrender.com/assess
-Body   : {
-           "latitude":      "{{ $json.latitude }}",
-           "longitude":     "{{ $json.longitude }}",
-           "farmerPhone":   "{{ $json.farmerPhone }}",
-           "messageType":   "location",
-           "shouldProcess": true
-         }
-```
-
-### Node configuration — Model 2
-
-```
-Method : POST
-URL    : https://cih-hackathon-model2-1.onrender.com/classify
-Body   : {{ JSON.stringify($json) }}   ← full Model 1 JSON report passed directly
-```
-
----
-
-## Project Structure
-
-```
-app.py                            — FastAPI server (deployed on Render)
-requirements.txt                  — Python dependencies
-.python-version                   — Python 3.11.9 (for Render)
-
-notebooks/
-  02_improved_yield_model.ipynb   — Train the XGBoost yield estimator
-  03_gee_fetcher.ipynb            — Fetch 24-month satellite profiles via GEE
-  04_quality_scorer.ipynb         — Compute quality score from farm profile
-
-saved_model/
-  yield_model_v2.joblib           — Trained model (14 features → yield)
-  feature_cols_v2.joblib          — Feature column order for inference
-
-yield_prediction_dataset.csv      — Training dataset (Kaggle)
-PIPELINE.md                       — Full technical pipeline documentation
-```
-
+![n8n workflow end](<img width="1600" height="1026" alt="WhatsApp Image 2026-04-19 at 10 35 34" src="https://github.com/user-attachments/assets/0084a059-ad5d-4f95-bbc4-e804a16f64c4" />
+)
 ---
 
 ## Deployment
